@@ -26,6 +26,7 @@
         this._layout = "";
         this._hierarchyOptions = { };
         this._snapToGrid = 0;
+        this._allowDragging = true;
     };
     Graph.prototype = Object.create(SVGWidget.prototype);
     Graph.prototype.implements(IGraph.prototype);
@@ -56,7 +57,7 @@
                 this._renderCount = 0;
                 this.setZoom([0, 0], 1);
             }
-            var data = this.graphData.setData(this._data.vertices, this._data.edges, this._data.merge);
+            var data = this.graphData.setData(this._data.vertices, this._data.edges, this._data.hierarchy, this._data.merge);
 
             var context = this;
             data.addedVertices.forEach(function (item) {
@@ -108,6 +109,12 @@
     Graph.prototype.snapToGrid = function (_) {
         if (!arguments.length) return this._snapToGrid;
         this._snapToGrid = _;
+        return this;
+    };
+
+    Graph.prototype.allowDragging = function (_) {
+        if (!arguments.length) return this._allowDragging;
+        this._allowDragging = _;
         return this;
     };
 
@@ -357,9 +364,11 @@
                 .target(this)
                 .render()
             ;
-            d.element()
-                .call(context.drag)
-            ;
+            if (context._allowDragging) {
+                d.element()
+                    .call(context.drag)
+                ;
+            }
             if (d.dispatch) {
                 d.dispatch.on("sizestart", function (args) {
                     context._dragging = true;
