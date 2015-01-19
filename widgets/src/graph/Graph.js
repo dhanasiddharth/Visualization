@@ -1,10 +1,10 @@
 (function (root, factory) {
     if (typeof define === "function" && define.amd) {
-        define(["d3/d3", "../common/SVGWidget", "./IGraph", "./Vertex", "./GraphData", "./GraphLayouts", "css!./Graph"], factory);
+        define(["d3/d3", "../common/SVGWidget", "./IGraph", "./Vertex", "./GraphData", "./GraphLayouts", "../other/Bag", "css!./Graph"], factory);
     } else {
-        root.Graph = factory(root.d3, root.SVGWidget, root.IGraph, root.Vertex, root.GraphData, root.GraphLayouts);
+        root.Graph = factory(root.d3, root.SVGWidget, root.IGraph, root.Vertex, root.GraphData, root.GraphLayouts, root.Bag);
     }
-}(this, function (d3, SVGWidget, IGraph, Vertex, GraphData, GraphLayouts) {
+}(this, function (d3, SVGWidget, IGraph, Vertex, GraphData, GraphLayouts, Bag) {
     function Graph() {
         SVGWidget.call(this);
         IGraph.call(this);
@@ -27,6 +27,7 @@
         this._hierarchyOptions = { };
         this._snapToGrid = 0;
         this._allowDragging = true;
+        this._selection = new Bag.Selection();
     };
     Graph.prototype = Object.create(SVGWidget.prototype);
     Graph.prototype.implements(IGraph.prototype);
@@ -49,13 +50,16 @@
         return retVal;
     };
 
+    Graph.prototype.clear = function () {
+        this.data({ vertices: [], edges: [], hierarchy: [], merge: false });
+    };
+
     Graph.prototype.data = function (_) {
         var retVal = SVGWidget.prototype.data.apply(this, arguments);
         if (arguments.length) {
             if (!this._data.merge) {
                 this.graphData = new GraphData();
                 this._renderCount = 0;
-                this.setZoom([0, 0], 1);
             }
             var data = this.graphData.setData(this._data.vertices, this._data.edges, this._data.hierarchy, this._data.merge);
 
@@ -118,19 +122,31 @@
         return this;
     };
 
-    Graph.prototype.setZoom = function (translation, scale) {
+    Graph.prototype.selection = function (_) {
+        if (!arguments.length) return this._selection.get();
+        this._selection.set(_);
+        return this;
+    };
+
+    Graph.prototype.setZoom = function (translation, scale, transitionDuration) {
         if (this.zoom) {
             this.zoom.translate(translation);
             this.zoom.scale(scale);
-            this.applyZoom();
+            this.applyZoom(transitionDuration);
         }
     };
 
-    Graph.prototype.applyZoom = function (transition) {
-        (transition ? this.svg.transition() : this.svg)
+    Graph.prototype.applyZoom = function (transitionDuration) {
+        if (d3.event && d3.event.sourceEvent && !d3.event.sourceEvent.ctrlKey && (d3.event.sourceEvent.type === "wheel" || d3.event.sourceEvent.type === "mousewheel" || d3.event.sourceEvent.type === "DOMMouseScroll")) {
+            if (d3.event.sourceEvent.wheelDelta) {
+                this.zoom.translate([this.prevTranslate[0], this.prevTranslate[1] + d3.event.sourceEvent.wheelDelta]);
+                this.zoom.scale(this.prevScale);
+            }
+        }
+        (transitionDuration ? this.svg.transition().duration(transitionDuration) : this.svg)
             .attr("transform", "translate(" + this.zoom.translate() + ")scale(" + this.zoom.scale() + ")")
         ;
-        //  IE Bug Workaround  (Markers) ---
+        this.prevTranslate = this.zoom.translate();
         if (this.prevScale !== this.zoom.scale()) {
             this._fixIEMarkers();
             this.prevScale = this.zoom.scale();
@@ -142,10 +158,13 @@
         var context = this;
 
         //  Zoom  ---
+        this.prevTranslate = [0, 0];
         this.prevScale = 1;
         this.zoom = d3.behavior.zoom()
-            .scaleExtent([0.2, 4])
-            .on("zoom", function (d) { context.applyZoom(); })
+            .scaleExtent([0.01, 4])
+            .on("zoom", function (d) {
+                context.applyZoom();
+            })
         ;
 
         //  Drag  ---
@@ -208,21 +227,23 @@
             .attr("y", -this._size.height / 2)
             .attr("width", this._size.width)
             .attr("height", this._size.height)
-            .call(this.zoom)
         ;
 
         this.defs = element.append("defs");
         this.addMarkers();
 
+        element.call(this.zoom);
+
         this.svg = element.append("g");
+        this.svgC = this.svg.append("g").attr("id", this._id + "C");
         this.svgE = this.svg.append("g").attr("id", this._id + "E");
         this.svgV = this.svg.append("g").attr("id", this._id + "V");
     };
 
-    Graph.prototype.getVertexBounds = function (layoutEngine) {
-        var vBounds = [[null,null],[null,null]];
-        this.graphData.nodeValues().forEach(function (item) {
-            var pos = layoutEngine.nodePos(item._id);
+    Graph.prototype.getBounds = function (items, layoutEngine) {
+        var vBounds = [[null, null], [null, null]];
+        items.forEach(function (item) {
+            var pos = layoutEngine ? layoutEngine.nodePos(item._id) : {x: item.x(), y: item.y(), width: item.width(), height: item.height()};
             var leftX = pos.x - pos.width / 2;
             var rightX = pos.x + pos.width / 2;
             var topY = pos.y - pos.height / 2;
@@ -242,8 +263,12 @@
         });
         return vBounds;
     };
+
+    Graph.prototype.getVertexBounds = function (layoutEngine) {
+        return this.getBounds(this.graphData.nodeValues(), layoutEngine);
+    };
         
-    Graph.prototype.shrinkToFit = function (bounds) {
+    Graph.prototype.shrinkToFit = function (bounds, transitionDuration) {
         var width = this.width();
         var height = this.height();
 
@@ -251,15 +276,22 @@
             dy = bounds[1][1] - bounds[0][1],
             x = (bounds[0][0] + bounds[1][0]) / 2,
             y = (bounds[0][1] + bounds[1][1]) / 2,
-            scale = .9 / Math.max(dx / width, dy / height);
+            scale = 1.0 / Math.max(dx / width, dy / height);
         if (scale > 1) {
             scale = 1;
         }
         var translate = [-scale * x, -scale * y];
-        this.setZoom(translate, scale);
+        this.setZoom(translate, scale, transitionDuration);
     };
 
-    Graph.prototype.layout = function (_) {
+    Graph.prototype.centerOn = function (bounds, transitionDuration) {
+        var x = (bounds[0][0] + bounds[1][0]) / 2,
+            y = (bounds[0][1] + bounds[1][1]) / 2
+        var translate = [x, y];
+        this.setZoom(translate, 1, transitionDuration);
+    };
+
+    Graph.prototype.layout = function (_, transitionDuration) {
         if (!arguments.length) return this._layout;
         this._layout = _;
         if (this._renderCount) {
@@ -303,14 +335,18 @@
                 context._dragging = true;
                 context.graphData.nodeValues().forEach(function (item) {
                     var pos = layoutEngine.nodePos(item._id);
-                    item
-                        .move({ x: pos.x, y: pos.y }, context._transitionDuration)
-                    ;
+                    item.move({ x: pos.x, y: pos.y }, transitionDuration);
+                    if (pos.width && pos.height && !item.width() && !item.height()) {
+                        item
+                            .size({ width: pos.width, height: pos.height }, transitionDuration)
+                            .render()
+                        ;
+                    }
                 });
                 context.graphData.edgeValues().forEach(function (item) {
                     var points = layoutEngine.edgePoints({v: item._sourceVertex.id(), w: item._targetVertex.id()});
                     item
-                        .points(points, context._transitionDuration)
+                        .points(points, transitionDuration)
                     ;
                 });
 
@@ -321,7 +357,7 @@
                 this._fixIEMarkers();
                 setTimeout(function() {
                     context._dragging = false;
-                }, context._transitionDuration + 50);  //  Prevents highlighting during morph  ---
+                }, transitionDuration ? transitionDuration + 50 : 50);  //  Prevents highlighting during morph  ---
             }
         }
         return this;
@@ -338,11 +374,16 @@
             .attr("class", "graphVertex")
             .style("opacity", 1e-6)
              //  TODO:  Events need to be optional  ---
+            .on("click.selectionBag", function (d) {
+                context._selection.click(d, d3.event);
+            })
             .on("click", function (d) {
-                context.vertex_click(d);
+                d3.event.stopPropagation();
+                context.vertex_click(d, d3.event);
             })
             .on("dblclick", function (d) {
-                context.vertex_dblclick(d);
+                d3.event.stopPropagation();
+                context.vertex_dblclick(d, d3.event);
             })
             .on("mouseover", function (d) {
                 if (context._dragging)
@@ -374,7 +415,7 @@
                     context._dragging = true;
                 });
                 d.dispatch.on("size", function (args) {
-                    context.refreshIncidentEdges(d, true);
+                    context.refreshIncidentEdges(d, false);
                 });
                 d.dispatch.on("sizeend", function (d) {
                     context._dragging = false;
@@ -385,7 +426,7 @@
                             .size(snapLoc[1])
                             .render()
                         ;
-                        context.refreshIncidentEdges(d, true);
+                        context.refreshIncidentEdges(d, false);
                     }
                 });
             }
@@ -444,6 +485,7 @@
         edgeElements.exit().remove();
 
         if (!this._renderCount++) {
+            this.setZoom([0, 0], 1);
             this.layout(this.layout());
         }
     };

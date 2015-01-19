@@ -137,6 +137,10 @@
         return this;
     };
 
+    Widget.prototype.cloneData = function () {
+        return this._data.map(function (row) { return row.slice(0); });
+    };
+
     Widget.prototype.rowToObj = function (row) {
         var retVal = {};
         if (row.length !== this._columns.length) {
@@ -192,6 +196,15 @@
     Widget.prototype.height = function (_) {
         if (!arguments.length) return this._size.height;
         this.size({ width: this._size.width, height: _ })
+        return this;
+    };
+
+    Widget.prototype.visible = function (_) {
+        if (!arguments.length) return this._visible;
+        this._visible = _;
+        if (this._parentElement) {
+            this._parentElement.style("visibility", this._visible ? null : "hidden");
+        }
         return this;
     };
 
@@ -283,6 +296,10 @@
             retVal.height = size.y - pos.y;
         }
         return retVal;
+    };
+
+    Widget.prototype.hasOverlay = function () {
+        return this._overlayElement;
     };
 
     Widget.prototype.syncOverlay = function () {
