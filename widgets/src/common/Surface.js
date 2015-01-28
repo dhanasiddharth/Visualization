@@ -7,9 +7,11 @@
 }(this, function (SVGWidget, Icon, Shape, Text, FAChar, Menu) {
     function Surface() {
         SVGWidget.call(this);
+        this._class = "common_Surface";
 
-        this._class = "surface";
-        this._icon = new Icon();
+        this._icon = new Icon()
+            .padding(4)
+        ;
         this._container = new Shape()
             .class("container")
             .shape("rect")
@@ -23,26 +25,30 @@
         ;
         this._menu = new Menu()
             .faChar("\uf0c9")
+            .padding(4)
         ;
+        var context = this;
+        this._menu.preShowMenu = function () {
+            if (context._content && context._content.hasOverlay()) {
+                context._content.visible(false);
+            }
+        }
+        this._menu.postHideMenu = function () {
+            if (context._content && context._content.hasOverlay()) {
+                context._content.visible(true);
+            }
+        }
 
-        this._faChar = "\uf07b";
-        this._title = "";
         this._showContent = true;
         this._content = null;
     };
     Surface.prototype = Object.create(SVGWidget.prototype);
 
-    Surface.prototype.faChar = function (_) {
-        if (!arguments.length) return this._faChar;
-        this._faChar = _;
-        return this;
-    };
-
-    Surface.prototype.title = function (_) {
-        if (!arguments.length) return this._title;
-        this._title = _;
-        return this;
-    };
+    Surface.prototype.publish("show_title", true, "boolean", "Show Title");
+    Surface.prototype.publish("faChar", "\uf07b", "string", "Title");
+    Surface.prototype.publishProxy("icon_shape", "_icon", "shape");
+    Surface.prototype.publish("title", "", "string", "Title");
+    Surface.prototype.publish("menu");
 
     Surface.prototype.menu = function (_) {
         if (!arguments.length) return this._menu.data();
@@ -80,6 +86,12 @@
         return this;
     };
 
+    Surface.prototype.testData = function () {
+        this.title("Hello and welcome!");
+        this.menu(["aaa", "bbb", "ccc"]);
+        return this;
+    }
+
     Surface.prototype.enter = function (_domNode, _element) {
         SVGWidget.prototype.enter.apply(this, arguments);
         var element = _element.append("g").attr("class", "frame");
@@ -97,57 +109,83 @@
             .render()
         ;
         this._icon
-            .faChar(this._faChar)
-            .shape("circle")
             .target(domNode)
-            .render()
         ;
         var menuViz = false;
+        this._menu
+            .target(_domNode)
+        ;
         this._text
             .target(domNode)
-            .render()
         ;
         this._container
             .target(domNode)
-            .render()
-        ;
-        this._menu
-            .target(_domNode)
-            .render()
         ;
     };
 
     Surface.prototype.update = function (domNode, element) {
         SVGWidget.prototype.update.apply(this, arguments);
-        var textClientSize = this._text.getBBox(true);
+
+        this._icon
+            .faChar(this._faChar)
+            .shape(this.icon_shape())
+            .display(this._show_title)
+            .render()
+        ;
+        this._menu
+            .render()
+        ;
+        this._text
+            .text(this._title)
+            .display(this._show_title)
+            .render()
+        ;
         var iconClientSize = this._icon.getBBox(true);
+        var textClientSize = this._text.getBBox(true);
         var menuClientSize = this._menu.getBBox(true);
-        var titleHeight = Math.max(textClientSize.height, menuClientSize.height);
-        var xOffset = iconClientSize.width / 7;
-        var yOffset = iconClientSize.height * 4 / 5;
+        var titleRegionHeight = Math.max(iconClientSize.height, textClientSize.height, menuClientSize.height);
+        var yTitle = (-this._size.height + titleRegionHeight) / 2;
+
+        var titleTextHeight = Math.max(textClientSize.height, menuClientSize.height);
+
+        var topMargin = titleRegionHeight <= titleTextHeight ? 0 : (titleRegionHeight - titleTextHeight) / 2;
+        var leftMargin = topMargin;
+
         this._titleRect
-            .pos({ x: xOffset / 2, y: -(this._size.height / 2) + iconClientSize.height / 2 })
-            .size({ width: this._size.width - xOffset, height: titleHeight })
+            .pos({ x: leftMargin, y: yTitle })
+            .width(this._size.width - leftMargin * 2)
+            .height(titleTextHeight)
+            .display(this._show_title)
             .render()
         ;
         this._icon
-            .move({ x: -(this._size.width / 2) + iconClientSize.width / 2, y: -(this._size.height / 2) + iconClientSize.height / 2 })
+            .move({ x: -this._size.width / 2 + iconClientSize.width / 2, y: yTitle })
         ;
         this._menu
-            .move({ x: (this._size.width / 2) - menuClientSize.width / 2 - 2, y: -(this._size.height / 2) + iconClientSize.height / 2 })
+            .move({ x: this._size.width / 2 - menuClientSize.width / 2, y: yTitle })
         ;
         this._text
-            .pos({ x: (iconClientSize.width / 2 - menuClientSize.width / 2) / 2, y: -(this._size.height / 2) + iconClientSize.height / 2 })
-            .text(this._title)
-            .render()
+            .move({ x: (iconClientSize.width / 2 - menuClientSize.width / 2) / 2, y: yTitle })
         ;
-        this._container
-            .pos({ x: xOffset / 2, y: yOffset / 2 })
-            .size({ width: this._size.width - xOffset, height: this._size.height - yOffset })
-            .render()
-        ;
+        if (this._show_title) {
+            this._container
+                .pos({ x: leftMargin / 2, y: titleRegionHeight / 2 - topMargin / 2 })
+                .width(this._size.width - leftMargin)
+                .height(this._size.height - titleRegionHeight + topMargin)
+                .render()
+            ;
+        } else {
+            this._container
+                .pos({ x: 0, y: 0 })
+                .width(this._size.width)
+                .height(this._size.height)
+                .render()
+            ;
+        }
 
         if (this._showContent) {
+            var xOffset = leftMargin;
+            var yOffset = titleRegionHeight - topMargin;
             var context = this;
             var content = element.selectAll(".content").data(this._content ? [this._content] : [], function (d) { return d._id; });
             content.enter().append("g")

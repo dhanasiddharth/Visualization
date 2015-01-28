@@ -8,20 +8,14 @@
     function List(target) {
         SVGWidget.call(this);
         IList.call(this);
-
-        this._class = "list";
+        this._class = "common_List";
 
         this._listWidgets = {};
-        this._listHeight = 0;
-        this._listWidth = 0;
-        this._listItemHeight = 0;
     };
     List.prototype = Object.create(SVGWidget.prototype);
     List.prototype.implements(IList.prototype);
 
-    List.prototype.enter = function (domNode, element) {
-        SVGWidget.prototype.enter.apply(this, arguments);
-    },
+    List.prototype.publish("anchor", "start", "set", "Anchor Position", ["", "start", "middle", "end"]);
 
     List.prototype.update = function (domNode, element) {
         SVGWidget.prototype.update.apply(this, arguments);
@@ -33,13 +27,10 @@
             .each(function (d) {
                 var newTextBox = new TextBox()
                     .target(this)
-                    .padding({
-                        left: 5,
-                        top: 1,
-                        right: 5,
-                        bottom: 1
-                    })
-                    .anchor("left")
+                    .padding_top(0)
+                    .padding_bottom(0)
+                    .padding_left(8)
+                    .padding_right(8)
                     .text(d)
                     .render()
                 ;
@@ -71,14 +62,14 @@
                 var widget = context._listWidgets[d];
                 var bbox = widget.getBBox();
                 widget
-                    .pos({ x: xPos, y: yPos + bbox.height / 2 })
+                    .pos({ x: 0, y: yPos + bbox.height / 2 })
+                    .anchor(context._anchor)
                     .fixedSize({ width: listWidth, height: bbox.height })
                     .render()
                 ;
                 yPos += bbox.height;
             })
         ;
-
         line.exit()
             .remove()
             .each(function (d) {

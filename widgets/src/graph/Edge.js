@@ -7,15 +7,15 @@
 }(this, function (d3, SVGWidget, TextBox) {
     function Edge() {
         SVGWidget.call(this);
+        this._class = "graph_Edge";
 
-        this._class = "edge";
         this._points = [];
         this._weight = 100;
         this._strokeDasharray = null;
         this._hidden = false;
 
         this._textBox = new TextBox()
-            .padding({left: 0,top: 0,right: 0,bottom: 0})
+            .padding(0)
         ;
     };
     Edge.prototype = Object.create(SVGWidget.prototype);

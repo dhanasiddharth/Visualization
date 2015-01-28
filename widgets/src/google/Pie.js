@@ -8,7 +8,7 @@
 
     function Pie(tget) {
         Common.call(this);
-        this._class = "google_pie";
+        this._class = "google_Pie";
 
         this._is3D = true;
     };
@@ -31,7 +31,7 @@
         google.visualization.events.addListener(this.pieChart, "select", function () {
             var selectedItem = context.pieChart.getSelection()[0];
             if (selectedItem) {
-                context.click(context.rowToObj(context._data[selectedItem.row]));
+                context.click(context.rowToObj(context._data[selectedItem.row]), context._columns[1]);
             }
         });
     };

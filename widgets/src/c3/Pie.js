@@ -7,12 +7,9 @@
 }(this, function (Common) {
     function Pie(target) {
         Common.call(this);
+        this._class = "c3_Pie";
 
-        this._class = "c3_pie";
         this._type = "pie";
-        this._config.data = {
-            columns: []
-        };
     };
     Pie.prototype = Object.create(Common.prototype);
 

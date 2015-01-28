@@ -7,9 +7,9 @@
 }(this, function (HTMLWidget) {
     function Table() {
         HTMLWidget.call(this);
+        this._class = "other_Table";
 
         this._tag = "table";
-        this._class = "table";
 
         this._columns = [];
     };
@@ -43,24 +43,22 @@
                 context.click(context.rowToObj(d));
             })
         ;
-
         rows.exit()
             .remove()
         ;
 
         var cells = rows.selectAll("td").data(function (row, i) {
-            var retVal = [];
-            for (var key in row) {
-                retVal.push("" + row[key]);
-            }
-            return retVal;
+            return row;
         });
         cells.enter()
             .append("td")
         ;
         cells
             .text(function (d) {
-                return d.trim();
+                if (d instanceof String) {
+                    return d.trim();
+                }
+                return d;
             })
         ;
         cells.exit()

@@ -8,7 +8,7 @@
 
     function Bar(tget) {
         Common.call(this);
-        this._class = "google_bar";
+        this._class = "google_Bar";
     };
     Bar.prototype = Object.create(Common.prototype);
 
@@ -22,7 +22,7 @@
         google.visualization.events.addListener(this.barChart, "select", function () {
             var selectedItem = context.barChart.getSelection()[0];
             if (selectedItem) {
-                context.click(context.rowToObj(context._data[selectedItem.row]));
+                context.click(context.rowToObj(context._data[selectedItem.row]), context._columns[selectedItem.column]);
             }
         });
     };

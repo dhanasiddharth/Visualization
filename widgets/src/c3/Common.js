@@ -11,7 +11,7 @@
         this.d3Color = Palette.ordinal("category20");
 
         this._tag = "div";
-        this._class = "Common";
+        this._class = "c3_Common";
         this._type = "unknown";
         var context = this;
         this._config = {
@@ -32,7 +32,11 @@
                 pattern: d3.scale.category20().range()
             },
             data: {
-                rows: []
+                columns: [],
+                rows: [],
+                onclick: function (d, element) {
+                    context.click(context.rowToObj(context._data[d.index]), d.x ? d.id : context._columns[1]);
+                }
             }
         };
     };

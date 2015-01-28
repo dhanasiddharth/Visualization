@@ -8,29 +8,19 @@
     function MultiChartSurface() {
         ResizeSurface.call(this);
         I2DChart.call(this);
+        this.class = "chart_MultiChartSurface";
 
         this._title = "MultiChartSurface";
-
         this._content = new MultiChart();
-
         var context = this;
         this._menu.click = function (d) {
             context._content.chartType(d);
-        }
-        this._menu.preShowMenu = function () {
-            if (context._content.hasOverlay()) {
-                context._content.visible(false);
-            }
-        }
-        this._menu.postHideMenu = function () {
-            if (context._content.hasOverlay()) {
-                context._content.visible(true);
-            }
         }
         this.mode("all");
     };
     MultiChartSurface.prototype = Object.create(ResizeSurface.prototype);
     MultiChartSurface.prototype.implements(I2DChart.prototype);
+    MultiChartSurface.prototype.testData = I2DChart.prototype.testData;
 
     MultiChartSurface.prototype.columns = function (_) {
         if (!arguments.length) return this._content.columns();

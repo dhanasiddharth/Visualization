@@ -8,8 +8,8 @@
     function Pie(target) {
         SVGWidget.call(this);
         I2DChart.call(this);
+        this._class = "chart_Pie";
 
-        this._class = "pie";
         this._outerText = false;  //  Put label inside pie or outside (true/false)
         this._radius = 100;       // px
         this._innerRadius = 0;    // px
@@ -74,7 +74,7 @@
             .attr("class", "arc")
             .attr("opacity", 0)
             .on("click", function (d) {
-                context.click(context.rowToObj(d.data));
+                context.click(context.rowToObj(d.data), context._columns[1]);
             })
             .each(function (d) {
                 var element = d3.select(this);
